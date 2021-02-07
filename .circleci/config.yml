@@ -38,6 +38,10 @@ workflows:
           requires:
             - client-test
             - integration-tests
+      - publish:
+          filters:
+            branches:
+              only: master
 
 jobs:
   lint:
@@ -202,3 +206,29 @@ jobs:
           docker tag weaveworks/scope:$(./tools/image-tag) "quay.io/${QUAY_ORGANIZATION}/scope:$(./tools/image-tag)"
           docker push "quay.io/${QUAY_ORGANIZATION}/scope:$(./tools/image-tag)"
       - run: test -z "${UI_BUCKET_KEY_ID}" || (make BUILD_IN_CONTAINER=false ui-upload ui-pkg-upload)
+  
+  publish:
+    machine:
+      image: ubuntu-1604:202007-01
+    working_directory: /home/circleci/scope
+    environment:
+      DEBUG: true
+    steps:
+      - checkout
+      - run: |
+            mkdir -vp ~/.docker/cli-plugins/
+            curl --silent -L --output ~/.docker/cli-plugins/docker-buildx https://github.com/docker/buildx/releases/download/v0.5.0/buildx-v0.5.0.linux-amd64
+            chmod a+x ~/.docker/cli-plugins/docker-buildx
+            docker run -it --rm --privileged tonistiigi/binfmt --install all
+            docker buildx create --use --name mybuilder
+      - run: |
+            test -z "${DOCKER_USER}" && exit 0
+            docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
+      - run: |
+            docker run --rm  --entrypoint=cat weaveworks/weaveexec@sha256:d19ca4e518ee3d52bfbd6c6b8fb90c258622462ff8386de39e15b0fa6edb02e5 /usr/bin/weaveutil > weaveutil_arm64
+            docker run --rm  --entrypoint=cat weaveworks/weaveexec@sha256:d19ca4e518ee3d52bfbd6c6b8fb90c258622462ff8386de39e15b0fa6edb02e5 /usr/bin/weaveutil > weaveutil
+      - run: |
+          docker buildx build --push --build-arg=revision=$(shell git rev-parse HEAD) --platform linux/arm64,linux/amd64 -t $DOCKER_USERNAME/cloud-agent_image:$(./tools/image-tag) -t $DOCKER_USERNAME/cloud-agent_image:latest -f docker/Dockerfile.cloud-agent .
+      - run: |
+          docker buildx build --push --build-arg=revision=$(git rev-parse HEAD) --build-arg=VERSION=$(git rev-parse --short HEAD) --platform linux/arm64,linux/amd64 -t $DOCKER_USERNAME/scope_image:$(./tools/image-tag) -t $DOCKER_USERNAME/scope_image:latest -f docker/Dockerfile.scope_multiarch .
+
