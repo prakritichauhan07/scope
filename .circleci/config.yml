@@ -231,4 +231,3 @@ jobs:
           docker buildx build --push --build-arg=revision=$(shell git rev-parse HEAD) --platform linux/arm64,linux/amd64 -t $DOCKER_USERNAME/cloud-agent_image:$(./tools/image-tag) -t $DOCKER_USERNAME/cloud-agent_image:latest -f docker/Dockerfile.cloud-agent .
       - run: |
           docker buildx build --push --build-arg=revision=$(git rev-parse HEAD) --build-arg=VERSION=$(git rev-parse --short HEAD) --platform linux/arm64,linux/amd64 -t $DOCKER_USERNAME/scope_image:$(./tools/image-tag) -t $DOCKER_USERNAME/scope_image:latest -f docker/Dockerfile.scope_multiarch .
-
