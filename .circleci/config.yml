@@ -226,6 +226,6 @@ jobs:
             docker run --rm  --entrypoint=cat weaveworks/weaveexec@sha256:d19ca4e518ee3d52bfbd6c6b8fb90c258622462ff8386de39e15b0fa6edb02e5 /usr/bin/weaveutil > weaveutil_arm64
             docker run --rm  --entrypoint=cat weaveworks/weaveexec@sha256:d19ca4e518ee3d52bfbd6c6b8fb90c258622462ff8386de39e15b0fa6edb02e5 /usr/bin/weaveutil > weaveutil
       - run: |
-          docker buildx build --push --build-arg=revision=$(shell git rev-parse HEAD) --platform linux/arm64,linux/amd64 -t $DOCKER_USERNAME/cloud-agent_image:$(./tools/image-tag) -t $DOCKER_USERNAME/cloud-agent_image:latest -f docker/Dockerfile.cloud-agent .
+          docker buildx build --push --build-arg=revision=$(shell git rev-parse HEAD) --platform linux/arm64,linux/amd64 -t $DOCKER_USERNAME/cloud-agent_image:$(./tools/image-tag) -t $DOCKER_USERNAME/cloud-agent_image:latest -f docker/Dockerfile.cloud-agent_multiarch .
       - run: |
           docker buildx build --push --build-arg=revision=$(git rev-parse HEAD) --build-arg=VERSION=$(git rev-parse --short HEAD) --platform linux/arm64,linux/amd64 -t $DOCKER_USERNAME/scope_image:$(./tools/image-tag) -t $DOCKER_USERNAME/scope_image:latest -f docker/Dockerfile.scope_multiarch .
