@@ -1,18 +1,34 @@
-# stage 1 building the code
-FROM alpine:3.11.3 as builder
-ARG VERSION
+#stage 1
+FROM ubuntu:16.04 as builder
 WORKDIR /home/weave
-RUN apk add --no-cache bash conntrack-tools iproute2 util-linux curl go libpcap-dev file
-COPY / /scope
-WORKDIR /scope
-RUN time env GOGC=off CGO_ENABLED=1  go build -mod vendor -ldflags "-extldflags \"-static\" -X main.version="${VERSION}" -s -w" -tags 'netgo unsafe' -o scope ./prog
+RUN apt-get update
+RUN apt-get install -y file make file git wget gcc libpcap-dev time
+ARG SCOPE_SKIP_UI_ASSETS
 
-# stage 2 
+RUN if [ `uname -m` = "aarch64" ] ; then \
+       wget -q https://dl.google.com/go/go1.13.linux-arm64.tar.gz && \
+       tar -xf go1.13.linux-arm64.tar.gz && \
+       mv go /usr/local; \
+    else \
+       wget -q https://dl.google.com/go/go1.13.linux-amd64.tar.gz && \
+       tar -xf go1.13.linux-amd64.tar.gz && \
+       mv go /usr/local; \
+    fi
+WORKDIR /root/go/src/github.com/weaveworks
+COPY / scope
+WORKDIR scope
+ENV GOROOT=/usr/local/go
+ENV GOPATH=/root/go
+ENV PATH=$GOPATH/bin:$GOROOT/bin:$PATH
+RUN go get -u github.com/mjibson/esc
+RUN make BUILD_IN_CONTAINER=false GO_BUILD_INSTALL_DEPS= prog/scope
+
+#stage 2
 FROM alpine:3.11.3
 WORKDIR /home/weave
-RUN apk add --no-cache bash conntrack-tools iproute2 util-linux curl file
-COPY --from=builder /scope/scope /home/weave/
-RUN file /home/weave/scope
+RUN apk add --no-cache bash conntrack-tools iproute2 util-linux curl
+COPY --from=builder /root/go/src/github.com/weaveworks/scope/prog/scope /home/weave/
+#RUN file /home/weave/scope
 ENTRYPOINT ["/home/weave/scope", "--mode=probe", "--no-app", "--probe.docker=true"]
 
 ARG revision
